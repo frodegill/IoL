@@ -8,9 +8,13 @@
  */
 
 #include <DHT.h>
-#include <ESP8266WiFi.h>
 #include <TM1637Display.h>
+#include <WiFi.h>
 
+
+static const char ssid[] = "gill-roxrud";
+static const char pass[] = "******";
+WiFiServer server(80);
 
 // 7-segment TM1637
 static const byte TM1637_TEMP     = 0;
@@ -31,8 +35,8 @@ DHT dht(AM2302_PIN, DHTTYPE);
 // Pressure MPXV7002DP
 static const byte MPXV7002DP_PIN  = A0;
 
-static const char ssid[] = "gill-roxrud";
-static const char pass[] = "20AADFFCEEC226FF8AD53DFCC5";
+unsigned long previous_update_time = 0L;
+static const int UPDATE_INTERVAL = 5000; //Should be >2000 because of DHT22
 
 
 void readPressure(double& pressure) {
@@ -79,22 +83,47 @@ void setup()
   while (WiFi.status() != WL_CONNECTED) {
     delay(100);
   }
+  server.begin();
 }
 
 void loop()
 {
-  double temperature;
-  double humidity;
-  readTemperatureHumidity(temperature, humidity);
+  WiFiClient client = server.available();
 
-  double pressure;
-  readPressure(pressure);
-
-  displayDouble(segment_displays[TM1637_TEMP], temperature);
-  displayDouble(segment_displays[TM1637_HUMIDITY], humidity);
-  displayDouble(segment_displays[TM1637_WIND], pressure);
+  unsigned long now = millis();
+  if (client ||
+      now<previous_update_time || //millis() wraps after ~50days
+      (now-previous_update_time)>=UPDATE_INTERVAL)
+  {
+    double temperature;
+    double humidity;
+    readTemperatureHumidity(temperature, humidity);
   
-  // Wait a few seconds between measurements.
-  delay(2000);
+    double pressure;
+    readPressure(pressure);
+  
+    displayDouble(segment_displays[TM1637_TEMP], temperature);
+    displayDouble(segment_displays[TM1637_HUMIDITY], humidity);
+    displayDouble(segment_displays[TM1637_WIND], pressure);
+
+    if (client)
+    {
+      if (client.available())
+      {
+        client.print("temperature: ");
+        client.println(temperature);
+        client.print("humidity: ");
+        client.println(humidity);
+        client.print("pressure: ");
+        client.println(pressure);
+        delay(10);
+      }
+      client.stop();
+    }
+
+    previous_update_time = now;
+  }
+  
+  delay(25);
 }
 
