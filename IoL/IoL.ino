@@ -43,6 +43,8 @@ static const uint8_t THERMOSTAT_PLUG                 = 1<<6;
 #define DELAY_BETWEEN_ACTIVE_SENSORS (25) //ms between reading different sensors
 #define SENSOR_READ_DELAY_TIME       (10*1000)  //ms min. time between sensor reading cycle
 
+static const float WINDSPEED_TRAVEL_DISTANCE = 0.22; //meter pr interrupt trigger signal
+
 
 enum State {
   SETUP_MODE,
@@ -81,7 +83,31 @@ volatile bool should_read_sht_temp_sensor[2];
 float sht_tempsensor_value[2];
 float sht_humiditysensor_value[2];
 
+volatile unsigned long windspeed_start_time;
+volatile unsigned int windspeed_count;
 
+
+void windspeedInterruptHandler() {
+  if (0 == windspeed_count) {
+    windspeed_start_time = millis();
+  }
+  windspeed_count++;
+}
+
+float getWindspeed() { // m/s
+  if (0 == windspeed_count) {
+    return 0.0f;
+  }
+
+  unsigned long current_time = millis();
+  if (current_time < windspeed_start_time) {
+    return 0.0f;
+  }
+
+  float windspeed = (windspeed_count*WINDSPEED_TRAVEL_DISTANCE) / (current_time-windspeed_start_time); // meter/ms
+  windspeed_count = 0;
+  return windspeed*1000.0f; // meter/s
+}
 
 void onTick()
 {
@@ -357,6 +383,12 @@ void setup()
 
     state = READ_TEMP_HUMIDITY_SENSOR;
     onTick();
+
+    if (active_sensors_param && WINDSPEED_SENSOR) {
+      windspeed_start_time = 0;
+      windspeed_count = 0;
+      attachInterrupt(digitalPinToInterrupt(WINDSPEED_PIN), windspeedInterruptHandler, RISING);
+    }
   }
 }
 
