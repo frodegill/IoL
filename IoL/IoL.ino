@@ -16,15 +16,15 @@
 #include <Ticker.h>
 
 static const char* SETUP_SSID = "sensor-setup";
-static const byte EEPROM_INITIALIZED_MARKER = 0xF1; //Just a magic number
+static const byte  EEPROM_INITIALIZED_MARKER = 0xF1; //Just a magic number
 
-static const uint8_t DHT_TEMP_HUMIDITY_SENSOR        = 1<<0;
-static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR1 = 1<<1;
-static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR2 = 1<<2;
-static const uint8_t PRESSURE_DIFF_SENSOR            = 1<<3;
-static const uint8_t WINDSPEED_SENSOR                = 1<<4;
-static const uint8_t FAN_RELAY                       = 1<<5;
-static const uint8_t THERMOSTAT_PLUG                 = 1<<6;
+static const uint8_t DHT_TEMP_HUMIDITY_SENSOR         = 1<<0;
+static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR_A = 1<<1;
+static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR_B = 1<<2;
+static const uint8_t PRESSURE_DIFF_SENSOR             = 1<<3;
+static const uint8_t WINDSPEED_SENSOR                 = 1<<4;
+static const uint8_t FAN_RELAY                        = 1<<5;
+static const uint8_t THERMOSTAT_PLUG                  = 1<<6;
 
 
 #define PRESSURE_DIFF_PIN            (A0) //Max 3.3V
@@ -32,8 +32,8 @@ static const uint8_t THERMOSTAT_PLUG                 = 1<<6;
 //#define (RX)
 //#define (D0) //Neither Interrupt, PWM, I2C nor One-wire
 #define DHT_PIN                      (D1) //HW I2C
-#define PRECISION_TEMP1_DATA_PIN     (D2) //HW I2C
-#define PRECISION_TEMP2_DATA_PIN     (D3) //10K pull-up
+#define PRECISION_TEMP_A_DATA_PIN    (D2) //HW I2C
+#define PRECISION_TEMP_B_DATA_PIN    (D3) //10K pull-up
 #define SETUP_MODE_PIN               (D4) //10K pull-up, built-in LED
 #define PRECISION_TEMP_SYNC_PIN      (D5)
 #define WINDSPEED_PIN                (D6)
@@ -49,15 +49,15 @@ static const float WINDSPEED_TRAVEL_DISTANCE = 0.22; //meter pr interrupt trigge
 enum State {
   SETUP_MODE,
   READ_TEMP_HUMIDITY_SENSOR,
-  READ_PRECISION_TEMP1_SENSOR,
-  READ_PRECISION_TEMP2_SENSOR,
+  READ_PRECISION_TEMP_A_SENSOR,
+  READ_PRECISION_TEMP_B_SENSOR,
   READ_PRESSURE_DIFF_SENSOR
 };
 
 
 DHTesp dht;
-Sensirion sht1 = Sensirion(PRECISION_TEMP1_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
-Sensirion sht2 = Sensirion(PRECISION_TEMP2_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
+Sensirion sht_a = Sensirion(PRECISION_TEMP_A_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
+Sensirion sht_b = Sensirion(PRECISION_TEMP_B_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
 
 ESP8266WebServer server(80);
 Ticker ticker;
@@ -119,25 +119,25 @@ void onTick()
           should_read_dht_temp_sensor = true;
         }
 
-        state = READ_PRECISION_TEMP1_SENSOR;
+        state = READ_PRECISION_TEMP_A_SENSOR;
         ticker.attach_ms(DELAY_BETWEEN_ACTIVE_SENSORS, onTick);
         break;  
       }
 
-    case READ_PRECISION_TEMP1_SENSOR:
+    case READ_PRECISION_TEMP_A_SENSOR:
       {
-        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR1) {
+        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_A) {
           should_read_sht_temp_sensor[0] = true;
         }
         
-        state = READ_PRECISION_TEMP2_SENSOR;
+        state = READ_PRECISION_TEMP_B_SENSOR;
         ticker.attach_ms(DELAY_BETWEEN_ACTIVE_SENSORS, onTick);
         break;
       }
     
-    case READ_PRECISION_TEMP2_SENSOR:
+    case READ_PRECISION_TEMP_B_SENSOR:
       {
-        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR2) {
+        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_B) {
           should_read_sht_temp_sensor[1] = true;
         }
 
@@ -152,7 +152,7 @@ void onTick()
           int value = max(0, min(1023, analogRead(PRESSURE_DIFF_PIN)));
         }
         
-        state = READ_PRECISION_TEMP1_SENSOR;
+        state = READ_PRECISION_TEMP_A_SENSOR;
         ticker.attach_ms(SENSOR_READ_DELAY_TIME, onTick);
         break;
       }
@@ -246,6 +246,30 @@ void handleSensorsValues() {
   server.send(200, F("text/plain"), msg);
 }
 
+void handleHeaterActivate() {
+  if (active_sensors_param & THERMOSTAT_PLUG) {
+    digitalWrite(THERMOSTAT_PLUG_TRIGGER_PIN, HIGH);
+  }
+}
+
+void handleHeaterDeactivate() {
+  if (active_sensors_param & THERMOSTAT_PLUG) {
+    digitalWrite(THERMOSTAT_PLUG_TRIGGER_PIN, LOW);
+  }
+}
+
+void handleFanActivate() {
+  if (active_sensors_param & FAN_RELAY) {
+    digitalWrite(FAN_RELAY_TRIGGER_PIN, HIGH);
+  }
+}
+
+void handleFanDeactivate() {
+  if (active_sensors_param & FAN_RELAY) {
+    digitalWrite(FAN_RELAY_TRIGGER_PIN, LOW);
+  }
+}
+
 void handleNotFound() {
   server.send(404, F("text/plain"), F("Page Not Found\n"));
 }
@@ -308,11 +332,11 @@ void handleSetupRoot() {
       body += F(" checked");
 
     body += F("/><br/>External temp sensor 1: <input type=\"checkbox\" name=\"sensor1\"");
-    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR1)
+    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_A)
       body += F(" checked");
     
     body += F("/><br/>External temp sensor 2: <input type=\"checkbox\" name=\"sensor2\"");
-    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR2)
+    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_B)
       body += F(" checked");
     
     body += F("/><br/>Pressure diff. sensor: <input type=\"checkbox\" name=\"sensor3\"");
@@ -347,6 +371,12 @@ void setup()
   dht.setup(DHT_PIN, DHTesp::AUTO_DETECT);
 
   pinMode(SETUP_MODE_PIN, INPUT_PULLUP);
+  
+  pinMode(FAN_RELAY_TRIGGER_PIN, OUTPUT);
+  digitalWrite(FAN_RELAY_TRIGGER_PIN, LOW);
+
+  pinMode(THERMOSTAT_PLUG_TRIGGER_PIN, OUTPUT);
+  digitalWrite(THERMOSTAT_PLUG_TRIGGER_PIN, LOW);
 
   if (LOW == digitalRead(SETUP_MODE_PIN))
   {
@@ -371,6 +401,10 @@ void setup()
     server.on(F("/count/values"), handleCountValues);
     server.on(F("/sensors/config"), handleSensorsConfig);
     server.on(F("/sensors/values"), handleSensorsValues);
+    server.on(F("/heater/activate"), handleHeaterActivate);
+    server.on(F("/heater/deactivate"), handleHeaterDeactivate);
+    server.on(F("/fan/activate"), handleFanActivate);
+    server.on(F("/fan/deactivate"), handleFanDeactivate);
     server.onNotFound(handleNotFound);
     server.begin();
   
@@ -411,18 +445,18 @@ void loop()
     }
   }
 
-  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR1) && should_read_sht_temp_sensor[0]) {
+  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_A) && should_read_sht_temp_sensor[0]) {
     float tmp_temp, tmp_humidity;
-    if (S_Meas_Rdy == sht1.measure(&tmp_temp, &tmp_humidity)) {
+    if (S_Meas_Rdy == sht_a.measure(&tmp_temp, &tmp_humidity)) {
       should_read_sht_temp_sensor[0] = false;
       sht_tempsensor_value[0] = tmp_temp;
       sht_humiditysensor_value[0] = tmp_humidity;
     }
   }
 
-  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR2) && should_read_sht_temp_sensor[1]) {
+  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_B) && should_read_sht_temp_sensor[1]) {
     float tmp_temp, tmp_humidity;
-    if (S_Meas_Rdy == sht2.measure(&tmp_temp, &tmp_humidity)) {
+    if (S_Meas_Rdy == sht_b.measure(&tmp_temp, &tmp_humidity)) {
       should_read_sht_temp_sensor[1] = false;
       sht_tempsensor_value[1] = tmp_temp;
       sht_humiditysensor_value[1] = tmp_humidity;
