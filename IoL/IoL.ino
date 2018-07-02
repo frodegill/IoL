@@ -219,25 +219,59 @@ void write_persistent_params(const char* ssid, const char* password, uint8_t act
   EEPROM.commit();
 }
 
-void handleCountConfig() {
-  server.send(200, F("text/plain"), F("graph_title InternetOfLåve\n"\
-                                      "graph_args --base 1000 -l 0\n"\
-                                      "graph_vlabel Count\n"\
-                                      "graph_category homeautomation\n"));
-}
-
-void handleCountValues() {
-  char msg[20];
-  snprintf(msg, sizeof(msg)/sizeof(msg[0]), "\n");
-  server.send(200, F("text/plain"), msg);
-}
-
 void handleSensorsConfig() {
-  server.send(200, F("text/plain"), F("graph_title InternetOfLåve\n"\
-                                      "graph_args --base 1000 -l 0\n"\
-                                      "graph_vlabel Value\n"\
-                                      "graph_category homeautomation\n"\
-                                      "graph_info IoL sensor values.\n"));
+  String response = F("graph_title InternetOfLåve\n"\
+                      "graph_args --base 1000 -l 0\n"\
+                      "graph_vlabel Value\n"\
+                      "graph_category homeautomation\n"\
+                      "graph_info IoL sensor values.\n");
+
+  if (active_sensors_param&DHT_TEMP_HUMIDITY_SENSOR)
+    response += F("AIRTEMP.label Air Temperature\n"\
+                  "AIRTEMP.draw LINE2\n"\
+                  "AIRTEMP.info C\n"\
+                  "AIRHUMIDITY.label Air Humidity\n"\
+                  "AIRHUMIDITY.draw LINE2\n"\
+                  "AIRHUMIDITY.info RH\n");
+
+  if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_A)
+    response += F("GRAINATEMP.label Grain A Temperature\n"\
+                  "GRAINATEMP.draw LINE2\n"\
+                  "GRAINATEMP.info C\n"\
+                  "GRAINAHUMIDITY.label Grain A Humidity\n"\
+                  "GRAINAHUMIDITY.draw LINE2\n"\
+                  "GRAINAHUMIDITY.info RH\n");
+  
+  if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_B)
+    response += F("GRAINBTEMP.label Grain B Temperature\n"\
+                  "GRAINBTEMP.draw LINE2\n"\
+                  "GRAINBTEMP.info C\n"\
+                  "GRAINBHUMIDITY.label Grain B Humidity\n"\
+                  "GRAINBHUMIDITY.draw LINE2\n"\
+                  "GRAINBHUMIDITY.info RH\n");
+  
+  if (active_sensors_param&PRESSURE_DIFF_SENSOR)
+    response += F("AIRPRESSURE.label Air Pressure Difference\n"\
+                  "AIRPRESSURE.draw LINE2\n"\
+                  "AIRPRESSURE.info KPa\n");
+  
+  if (active_sensors_param&WINDSPEED_SENSOR)
+    response += F("WIND.label Wind Speed\n"\
+                  "WIND.draw LINE2\n"\
+                  "WIND.info m/s\n");
+  
+  if (active_sensors_param&FAN_RELAY)
+    response += F("FAN.label Fan Relay\n"\
+                  "FAN.draw LINE2\n"\
+                  "FAN.info active\n");
+  
+  if (active_sensors_param&THERMOSTAT_PLUG)
+    response += F("THERMOSTAT.label Thermostat Plug\n"\
+                  "THERMOSTAT.draw LINE2\n"\
+                  "THERMOSTAT.info active\n");
+
+  server.send(200, F("text/plain"), response);
+
 }
 
 void handleSensorsValues() {
@@ -397,8 +431,6 @@ void setup()
       delay(500);
     }
   
-    server.on(F("/count/config"), handleCountConfig);
-    server.on(F("/count/values"), handleCountValues);
     server.on(F("/sensors/config"), handleSensorsConfig);
     server.on(F("/sensors/values"), handleSensorsValues);
     server.on(F("/heater/activate"), handleHeaterActivate);
