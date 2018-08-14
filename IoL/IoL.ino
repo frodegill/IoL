@@ -1,3 +1,4 @@
+
 /*
  * Internet Of Låve
  * 
@@ -12,76 +13,85 @@
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include "Sensirion.h"
+#include <PubSubClient.h>
+#include <WEMOS_SHT3X.h>
 #include <Ticker.h>
 
 static const char* SETUP_SSID = "sensor-setup";
 static const byte  EEPROM_INITIALIZED_MARKER = 0xF1; //Just a magic number
 
 static const uint8_t DHT_TEMP_HUMIDITY_SENSOR         = 1<<0;
-static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR_A = 1<<1;
-static const uint8_t PRECISION_TEMP_HUMIDITY_SENSOR_B = 1<<2;
-static const uint8_t PRESSURE_DIFF_SENSOR             = 1<<3;
-static const uint8_t WINDSPEED_SENSOR                 = 1<<4;
-static const uint8_t FAN_RELAY                        = 1<<5;
-static const uint8_t THERMOSTAT_PLUG                  = 1<<6;
+static const uint8_t SHT_TEMP_HUMIDITY_SENSOR         = 1<<1;
+static const uint8_t PRESSURE_DIFF_SENSOR             = 1<<2;
+static const uint8_t WINDSPEED_SENSOR                 = 1<<3;
+static const uint8_t FAN_RELAY                        = 1<<4;
+static const uint8_t THERMOSTAT_PLUG                  = 1<<5;
 
 
 #define PRESSURE_DIFF_PIN            (A0) //Max 3.3V
-//#define (TX)
-//#define (RX)
-//#define (D0) //Neither Interrupt, PWM, I2C nor One-wire
-#define DHT_PIN                      (D1) //HW I2C
-#define PRECISION_TEMP_A_DATA_PIN    (D2) //HW I2C
-#define PRECISION_TEMP_B_DATA_PIN    (D3) //10K pull-up
-#define SETUP_MODE_PIN               (D4) //10K pull-up, built-in LED
-#define PRECISION_TEMP_SYNC_PIN      (D5)
-#define WINDSPEED_PIN                (D6)
-#define FAN_RELAY_TRIGGER_PIN        (D7)
-#define THERMOSTAT_PLUG_TRIGGER_PIN  (D8) //10K pull-down
+
+//#define (D0)                            //GPIO3 - Neither Interrupt, PWM, I2C nor One-wire
+#define SHT_SYNC_PIN                 (D1) //GPIO1 - HW I2C
+#define SHT_DATA_PIN                 (D2) //GPIO16 - HW I2C
+#define DHT_PIN                      (D3) //GPIO5 - 10K pull-up
+#define SETUP_MODE_PIN               (D4) //GPIO4 - 10K pull-up, built-in LED
+//#define (D5) //GPIO14 - 
+#define WINDSPEED_PIN                (D6) //GPIO12 - 
+#define FAN_RELAY_TRIGGER_PIN        (D7) //GPIO13 - 
+#define THERMOSTAT_PLUG_TRIGGER_PIN  (D8) //GPIO0 - 10K pull-down
+//#define (D9)                            //GPIO2 - 
+//#define (D10)                           //GPIO15 - 
 
 #define DELAY_BETWEEN_ACTIVE_SENSORS (25) //ms between reading different sensors
 #define SENSOR_READ_DELAY_TIME       (10*1000)  //ms min. time between sensor reading cycle
 
-static const float WINDSPEED_TRAVEL_DISTANCE = 0.22; //meter pr interrupt trigger signal
+static const float WINDSPEED_TRAVEL_DISTANCE = 0.2262; //meter pr interrupt trigger signal
 
 
 enum State {
   SETUP_MODE,
-  READ_TEMP_HUMIDITY_SENSOR,
-  READ_PRECISION_TEMP_A_SENSOR,
-  READ_PRECISION_TEMP_B_SENSOR,
+  READ_DHT_SENSOR,
+  READ_SHT_SENSOR,
   READ_PRESSURE_DIFF_SENSOR
 };
 
 
 DHTesp dht;
-Sensirion sht_a = Sensirion(PRECISION_TEMP_A_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
-Sensirion sht_b = Sensirion(PRECISION_TEMP_B_DATA_PIN, PRECISION_TEMP_SYNC_PIN, 0x40);
+SHT3X sht(0x45);
 
 ESP8266WebServer server(80);
-Ticker ticker;
+
+WiFiClient esp_client;
+PubSubClient mqtt_client(esp_client);
 
 DNSServer dnsServer;
 static const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 4, 1);
 
+Ticker ticker;
+
 volatile State state;
 
-#define MAX_SSID_LENGTH        (32)
-#define MAX_PASSWORD_LENGTH    (64)
+#define MAX_SSID_LENGTH            (32)
+#define MAX_PASSWORD_LENGTH        (64)
+#define MAX_MQTT_SERVERNAME_LENGTH (64)
+#define MAX_MQTT_USERNAME_LENGTH   (32)
+#define MAX_MQTT_PASSWORD_LENGTH   (32)
 
 char ssid_param[MAX_SSID_LENGTH+1];
 char password_param[MAX_PASSWORD_LENGTH+1];
+char mqtt_servername_param[MAX_MQTT_SERVERNAME_LENGTH+1];
+char mqtt_username_param[MAX_MQTT_USERNAME_LENGTH+1];
+char mqtt_password_param[MAX_MQTT_PASSWORD_LENGTH+1];
 uint8_t active_sensors_param = 0;
 
 volatile bool should_read_dht_temp_sensor;
 float dht_tempsensor_value;
 float dht_humiditysensor_value;
 
-volatile bool should_read_sht_temp_sensor[2];
-float sht_tempsensor_value[2];
-float sht_humiditysensor_value[2];
+volatile bool should_read_sht_temp_sensor;
+float sht_tempsensor_value;
+float sht_humiditysensor_value;
 
 volatile unsigned long windspeed_start_time;
 volatile unsigned int windspeed_count;
@@ -113,34 +123,23 @@ void onTick()
 {
   switch(state)
   {
-    case READ_TEMP_HUMIDITY_SENSOR:
+    case READ_DHT_SENSOR:
       {
         if (active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR) {
           should_read_dht_temp_sensor = true;
         }
 
-        state = READ_PRECISION_TEMP_A_SENSOR;
+        state = READ_SHT_SENSOR;
         ticker.attach_ms(DELAY_BETWEEN_ACTIVE_SENSORS, onTick);
         break;  
       }
 
-    case READ_PRECISION_TEMP_A_SENSOR:
+    case READ_SHT_SENSOR:
       {
-        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_A) {
-          should_read_sht_temp_sensor[0] = true;
+        if (active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR) {
+          should_read_sht_temp_sensor = true;
         }
         
-        state = READ_PRECISION_TEMP_B_SENSOR;
-        ticker.attach_ms(DELAY_BETWEEN_ACTIVE_SENSORS, onTick);
-        break;
-      }
-    
-    case READ_PRECISION_TEMP_B_SENSOR:
-      {
-        if (active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_B) {
-          should_read_sht_temp_sensor[1] = true;
-        }
-
         state = READ_PRESSURE_DIFF_SENSOR;
         ticker.attach_ms(DELAY_BETWEEN_ACTIVE_SENSORS, onTick);
         break;
@@ -152,7 +151,7 @@ void onTick()
           int value = max(0, min(1023, analogRead(PRESSURE_DIFF_PIN)));
         }
         
-        state = READ_PRECISION_TEMP_A_SENSOR;
+        state = READ_DHT_SENSOR;
         ticker.attach_ms(SENSOR_READ_DELAY_TIME, onTick);
         break;
       }
@@ -187,11 +186,17 @@ void read_persistent_params()
   {
     ssid_param[0] = 0;
     password_param[0] = 0;
+    mqtt_servername_param[0] = 0;
+    mqtt_username_param[0] = 0;
+    mqtt_password_param[0] = 0;
     active_sensors_param = 0;
   } else {
     read_persistent_string(ssid_param, MAX_SSID_LENGTH, adr);
     read_persistent_string(password_param, MAX_PASSWORD_LENGTH, adr);
     read_persistent_byte(active_sensors_param, adr);
+    read_persistent_string(mqtt_servername_param, MAX_MQTT_SERVERNAME_LENGTH, adr);
+    read_persistent_string(mqtt_username_param, MAX_MQTT_USERNAME_LENGTH, adr);
+    read_persistent_string(mqtt_password_param, MAX_MQTT_PASSWORD_LENGTH, adr);
   }
 }
 
@@ -216,6 +221,9 @@ void write_persistent_params(const char* ssid, const char* password, uint8_t act
   write_persistent_string(ssid, MAX_SSID_LENGTH, adr);
   write_persistent_string(password, MAX_PASSWORD_LENGTH, adr);
   write_persistent_byte(active_sensors, adr);
+  write_persistent_string(mqtt_servername_param, MAX_MQTT_SERVERNAME_LENGTH, adr);
+  write_persistent_string(mqtt_username_param, MAX_MQTT_USERNAME_LENGTH, adr);
+  write_persistent_string(mqtt_password_param, MAX_MQTT_PASSWORD_LENGTH, adr);
   EEPROM.commit();
 }
 
@@ -234,21 +242,13 @@ void handleSensorsConfig() {
                   "AIRHUMIDITY.draw LINE2\n"\
                   "AIRHUMIDITY.info RH\n");
 
-  if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_A)
-    response += F("GRAINATEMP.label Grain A Temperature\n"\
-                  "GRAINATEMP.draw LINE2\n"\
-                  "GRAINATEMP.info C\n"\
-                  "GRAINAHUMIDITY.label Grain A Humidity\n"\
-                  "GRAINAHUMIDITY.draw LINE2\n"\
-                  "GRAINAHUMIDITY.info RH\n");
-  
-  if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_B)
-    response += F("GRAINBTEMP.label Grain B Temperature\n"\
-                  "GRAINBTEMP.draw LINE2\n"\
-                  "GRAINBTEMP.info C\n"\
-                  "GRAINBHUMIDITY.label Grain B Humidity\n"\
-                  "GRAINBHUMIDITY.draw LINE2\n"\
-                  "GRAINBHUMIDITY.info RH\n");
+  if (active_sensors_param&SHT_TEMP_HUMIDITY_SENSOR)
+    response += F("GRAINTEMP.label Grain Temperature\n"\
+                  "GRAINTEMP.draw LINE2\n"\
+                  "GRAINTEMP.info C\n"\
+                  "GRAINHUMIDITY.label Grain Humidity\n"\
+                  "GRAINHUMIDITY.draw LINE2\n"\
+                  "GRAINHUMIDITY.info RH\n");
   
   if (active_sensors_param&PRESSURE_DIFF_SENSOR)
     response += F("AIRPRESSURE.label Air Pressure Difference\n"\
@@ -275,9 +275,49 @@ void handleSensorsConfig() {
 }
 
 void handleSensorsValues() {
-  char msg[80];
-  snprintf(msg, sizeof(msg)/sizeof(msg[0]), "\n");
-  server.send(200, F("text/plain"), msg);
+  String response;
+  
+  if (active_sensors_param&DHT_TEMP_HUMIDITY_SENSOR)
+  {
+    response += F("AIRTEMP.value ");
+    response += dht_tempsensor_value;
+    response += F("\nAIRHUMIDITY.value ");
+    response += dht_humiditysensor_value;
+    response += F("\n");
+  }
+
+  if (active_sensors_param&SHT_TEMP_HUMIDITY_SENSOR)
+  {
+    response += F("GRAINTEMP.value ");
+    response += sht_tempsensor_value;
+    response += F("\nGRAINHUMIDITY.value ");
+    response += sht_humiditysensor_value;
+    response += F("\n");
+  }
+  
+  if (active_sensors_param&PRESSURE_DIFF_SENSOR)
+    response += F("AIRPRESSURE.label Air Pressure Difference\n"\
+                  "AIRPRESSURE.draw LINE2\n"\
+                  "AIRPRESSURE.info KPa\n");
+  
+  if (active_sensors_param&WINDSPEED_SENSOR)
+  {
+    response += F("WIND.value ");
+    response += getWindspeed();
+    response += F("\n");
+  }
+  
+  if (active_sensors_param&FAN_RELAY)
+    response += F("FAN.label Fan Relay\n"\
+                  "FAN.draw LINE2\n"\
+                  "FAN.info active\n");
+  
+  if (active_sensors_param&THERMOSTAT_PLUG)
+    response += F("THERMOSTAT.label Thermostat Plug\n"\
+                  "THERMOSTAT.draw LINE2\n"\
+                  "THERMOSTAT.info active\n");
+
+  server.send(200, F("text/plain"), response);
 }
 
 void handleHeaterActivate() {
@@ -309,7 +349,10 @@ void handleNotFound() {
 }
 
 void handleSetupRoot() {
-  if (server.hasArg("ssid") || server.hasArg("password"))
+  if (server.hasArg("ssid") || server.hasArg("password")
+      || server.hasArg("mqtt_server") || server.hasArg("mqtt_username") || server.hasArg("mqtt_password")
+      || server.hasArg("sensor0") || server.hasArg("sensor1") || server.hasArg("sensor2") || server.hasArg("sensor3")
+      || server.hasArg("sensor4") || server.hasArg("sensor5") || server.hasArg("sensor6") || server.hasArg("sensor7"))
   {
     if (server.hasArg("ssid"))
     {
@@ -321,6 +364,22 @@ void handleSetupRoot() {
     {
       strncpy(password_param, server.arg("password").c_str(), MAX_PASSWORD_LENGTH);
       password_param[MAX_PASSWORD_LENGTH] = 0;
+    }
+
+    if (server.hasArg("mqtt_server"))
+    {
+      strncpy(mqtt_servername_param, server.arg("mqtt_server").c_str(), MAX_MQTT_SERVERNAME_LENGTH);
+      mqtt_servername_param[MAX_MQTT_SERVERNAME_LENGTH] = 0;
+    }
+    if (server.hasArg("mqtt_username"))
+    {
+      strncpy(mqtt_username_param, server.arg("mqtt_username").c_str(), MAX_MQTT_USERNAME_LENGTH);
+      mqtt_username_param[MAX_MQTT_USERNAME_LENGTH] = 0;
+    }
+    if (server.hasArg("mqtt_password") && !server.arg("mqtt_password").equals(F("mqtt_password")))
+    {
+      strncpy(mqtt_password_param, server.arg("mqtt_password").c_str(), MAX_MQTT_PASSWORD_LENGTH);
+      mqtt_password_param[MAX_MQTT_PASSWORD_LENGTH] = 0;
     }
 
     active_sensors_param = 0;
@@ -360,17 +419,26 @@ void handleSetupRoot() {
     body += F("\"/><br/>"\
               "Password:<input type=\"password\" name=\"password\" maxlength=\"");
     body += String(MAX_PASSWORD_LENGTH);
-    body += F("\" value=\"password\"/><br/>"\
-                      "Internal temp/humidity sensor: <input type=\"checkbox\" name=\"sensor0\"");
+    body += F("\" value=\"password\"/><br/><hr/>"\
+              "MQTT server:<input type=\"text\" name=\"mqtt_server\" maxlength=\"");
+    body += String(MAX_MQTT_SERVERNAME_LENGTH);
+    body += F("\" value=\"");
+    body += mqtt_servername_param;
+    body += F("\"/><br/>"\
+              "MQTT username:<input type=\"text\" name=\"mqtt_username\" maxlength=\"");
+    body += String(MAX_MQTT_USERNAME_LENGTH);
+    body += F("\" value=\"");
+    body += mqtt_username_param;
+    body += F("\"/><br/>"\
+              "MQTT password:<input type=\"password\" name=\"mqtt_password\" maxlength=\"");
+    body += String(MAX_MQTT_PASSWORD_LENGTH);
+    body += F("\" value=\"password\"/><br/><hr/>"\
+              "Internal temp/humidity sensor: <input type=\"checkbox\" name=\"sensor0\"");
     if (active_sensors_param&DHT_TEMP_HUMIDITY_SENSOR)
       body += F(" checked");
 
-    body += F("/><br/>External temp sensor 1: <input type=\"checkbox\" name=\"sensor1\"");
-    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_A)
-      body += F(" checked");
-    
-    body += F("/><br/>External temp sensor 2: <input type=\"checkbox\" name=\"sensor2\"");
-    if (active_sensors_param&PRECISION_TEMP_HUMIDITY_SENSOR_B)
+    body += F("/><br/>External temp sensor: <input type=\"checkbox\" name=\"sensor1\"");
+    if (active_sensors_param&SHT_TEMP_HUMIDITY_SENSOR)
       body += F(" checked");
     
     body += F("/><br/>Pressure diff. sensor: <input type=\"checkbox\" name=\"sensor3\"");
@@ -398,11 +466,26 @@ void handleSetupRoot() {
   }
 }
 
+void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+}
+
+void reconnect_mqtt() {
+  while (!mqtt_client.connected()) {
+    if (mqtt_client.connect("ESP8266Client")) {
+      Serial.print("failed, rc=");
+      Serial.print(mqtt_client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
 void setup()
 {
   EEPROM.begin(1 + MAX_SSID_LENGTH + 1 + MAX_PASSWORD_LENGTH + 1);
 
-  dht.setup(DHT_PIN, DHTesp::AUTO_DETECT);
+  dht.setup(DHT_PIN, DHTesp::AM2302);
 
   pinMode(SETUP_MODE_PIN, INPUT_PULLUP);
   
@@ -431,6 +514,9 @@ void setup()
       delay(500);
     }
   
+    mqtt_client.setServer(mqtt_servername_param, 1883);
+    mqtt_client.setCallback(mqtt_callback);
+
     server.on(F("/sensors/config"), handleSensorsConfig);
     server.on(F("/sensors/values"), handleSensorsValues);
     server.on(F("/heater/activate"), handleHeaterActivate);
@@ -443,11 +529,11 @@ void setup()
     should_read_dht_temp_sensor = false;
     dht_tempsensor_value = dht_humiditysensor_value = 0.0f;
 
-    should_read_sht_temp_sensor[0] = should_read_sht_temp_sensor[1] = false;
-    sht_tempsensor_value[0] = sht_tempsensor_value[1] = 0.0f;
-    sht_humiditysensor_value[0] = sht_humiditysensor_value[1] = 0.0f;
+    should_read_sht_temp_sensor = false;
+    sht_tempsensor_value = 0.0f;
+    sht_humiditysensor_value = 0.0f;
 
-    state = READ_TEMP_HUMIDITY_SENSOR;
+    state = READ_DHT_SENSOR;
     onTick();
 
     if (active_sensors_param && WINDSPEED_SENSOR) {
@@ -464,6 +550,11 @@ void loop()
       dnsServer.processNextRequest();
   }
 
+  if (!mqtt_client.connected()) {
+    reconnect_mqtt();
+  }
+  mqtt_client.loop();
+
   server.handleClient();
 
   if ((active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR) && should_read_dht_temp_sensor) {
@@ -477,21 +568,11 @@ void loop()
     }
   }
 
-  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_A) && should_read_sht_temp_sensor[0]) {
-    float tmp_temp, tmp_humidity;
-    if (S_Meas_Rdy == sht_a.measure(&tmp_temp, &tmp_humidity)) {
-      should_read_sht_temp_sensor[0] = false;
-      sht_tempsensor_value[0] = tmp_temp;
-      sht_humiditysensor_value[0] = tmp_humidity;
-    }
-  }
-
-  if ((active_sensors_param & PRECISION_TEMP_HUMIDITY_SENSOR_B) && should_read_sht_temp_sensor[1]) {
-    float tmp_temp, tmp_humidity;
-    if (S_Meas_Rdy == sht_b.measure(&tmp_temp, &tmp_humidity)) {
-      should_read_sht_temp_sensor[1] = false;
-      sht_tempsensor_value[1] = tmp_temp;
-      sht_humiditysensor_value[1] = tmp_humidity;
+  if ((active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR) && should_read_sht_temp_sensor) {
+    if (0 == sht.get()) {
+      should_read_sht_temp_sensor = false;
+      sht_tempsensor_value = sht.cTemp;
+      sht_humiditysensor_value = sht.humidity;
     }
   }
 }
