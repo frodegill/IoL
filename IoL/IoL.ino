@@ -93,7 +93,7 @@ char mqtt_servername_param[MAX_MQTT_SERVERNAME_LENGTH+1];
 char mqtt_sensorid_param[MAX_MQTT_SENSORID_LENGTH+1];
 char mqtt_username_param[MAX_MQTT_USERNAME_LENGTH+1];
 char mqtt_password_param[MAX_MQTT_PASSWORD_LENGTH+1];
-boolean mqtt_enabled;
+bool mqtt_enabled;
 uint8_t active_sensors_param = 0;
 
 volatile bool should_read_dht_temp_sensor = false;
@@ -110,8 +110,8 @@ volatile unsigned long windspeed_start_time;
 volatile unsigned int windspeed_count;
 float published_windspeed = -999.9f;
 
-volatile boolean heater_active = false;
-volatile boolean fan_active = false;
+volatile bool heater_active = false;
+volatile bool fan_active = false;
 
 volatile bool debug_enabled = false; // Internal, to keep track of Serial status
 
@@ -297,7 +297,7 @@ void writePersistentParams(const char* ssid, const char* password, uint8_t activ
   EEPROM.commit();
 }
 
-void handleHeater(boolean activate) {
+void handleHeater(bool activate) {
   if (active_sensors_param & THERMOSTAT_RELAY) {
     digitalWrite(O_THERMOSTAT_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
     heater_active = activate;
@@ -308,7 +308,7 @@ void handleHeater(boolean activate) {
   }
 }
 
-void handleFan(boolean activate) {
+void handleFan(bool activate) {
   if (active_sensors_param & FAN_RELAY) {
     digitalWrite(O_FAN_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
     fan_active = activate;
