@@ -25,26 +25,22 @@ static const uint8_t SHT_TEMP_HUMIDITY_SENSOR         = 1<<1;
 static const uint8_t PRESSURE_DIFF_SENSOR             = 1<<2;
 static const uint8_t WINDSPEED_SENSOR                 = 1<<3;
 static const uint8_t FAN_RELAY                        = 1<<4;
-static const uint8_t THERMOSTAT_PLUG                  = 1<<5;
+static const uint8_t THERMOSTAT_RELAY                 = 1<<5;
 
 
-#define PRESSURE_DIFF_PIN            (A0) //Max 3.3V
+#define I_PRESSURE_DIFF_PIN            (A0) //Max 3.3V
 
-//#define (D0)                            //GPIO3 - Neither Interrupt, PWM, I2C nor One-wire
-#define O_SHT_SYNC_PIN                 (D3) //GPIO1 - HW I2C
-#define O_SHT_DATA_PIN                 (D4) //GPIO16 - HW I2C
-#define I_DHT_PIN                      (D2) //GPIO5 - 10K pull-up
-#define I_SETUP_MODE_PIN               (D9) //GPIO4 - 10K pull-up, built-in LED
-//#define (D5) //GPIO14 - 
-#define I_WINDSPEED_PIN                (D6) //GPIO12 - 
-#define O_FAN_RELAY_TRIGGER_PIN        (D7) //GPIO13 - 
-#define O_THERMOSTAT_PLUG_TRIGGER_PIN  (D8) //GPIO0 - 10K pull-down
-//#define (D9)                            //GPIO2 - 
-//#define (D10)                           //GPIO15 - 
+#define O_SHT_SYNC_PIN                 (D3) //SCL
+#define I_SHT_DATA_PIN                 (D4) //SDA
+#define I_DHT_PIN                      (D2)
+#define I_SETUP_MODE_PIN               (D9) //built-in LED
+#define I_WINDSPEED_PIN                (D6)
+#define O_FAN_RELAY_TRIGGER_PIN        (D7)
+#define O_THERMOSTAT_RELAY_TRIGGER_PIN (D8)
 
-#define DELAY_BETWEEN_ACTIVE_SENSORS (25) //ms between reading different sensors
-#define SENSOR_READ_DELAY_TIME       (10*1000)  //ms min. time between sensor reading cycle
-#define MQTT_PUBLISH_INTERVAL        (5*1000) //ms min. time between publishing sensor values to MQTT server
+#define DELAY_BETWEEN_ACTIVE_SENSORS   (25) //ms between reading different sensors
+#define SENSOR_READ_DELAY_TIME         (10*1000)  //ms min. time between sensor reading cycle
+#define MQTT_PUBLISH_INTERVAL          (5*1000) //ms min. time between publishing sensor values to MQTT server
 
 static const float WINDSPEED_TRAVEL_DISTANCE = 0.2262; //meter pr rotation
 
@@ -218,7 +214,7 @@ void onTick()
     case READ_PRESSURE_DIFF_SENSOR:
       {
         if (active_sensors_param & PRESSURE_DIFF_SENSOR) {
-          pressure_diff_value = max(0, min(1023, analogRead(PRESSURE_DIFF_PIN))) * 5.0f / 1023.0f -2.5f;
+          pressure_diff_value = max(0, min(1023, analogRead(I_PRESSURE_DIFF_PIN))) * 5.0f / 1023.0f -2.5f;
           printDebug((String("reading pressure diff value ")+String(pressure_diff_value, 2)).c_str());
         }
         
@@ -302,8 +298,8 @@ void writePersistentParams(const char* ssid, const char* password, uint8_t activ
 }
 
 void handleHeater(boolean activate) {
-  if (active_sensors_param & THERMOSTAT_PLUG) {
-    digitalWrite(O_THERMOSTAT_PLUG_TRIGGER_PIN, activate ? HIGH : LOW);
+  if (active_sensors_param & THERMOSTAT_RELAY) {
+    digitalWrite(O_THERMOSTAT_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
     heater_active = activate;
     if (mqtt_enabled)
     {
@@ -443,7 +439,7 @@ void handleSetupRoot() {
       body += F(" checked");
     
     body += F("/><br/>Heater thermostat plug: <input type=\"checkbox\" name=\"sensor5\"");
-    if (active_sensors_param&THERMOSTAT_PLUG)
+    if (active_sensors_param&THERMOSTAT_RELAY)
       body += F(" checked");
     
     body += F("/><br/>"\
@@ -578,7 +574,7 @@ void setup()
     sht.begin();
 
     pinMode(O_FAN_RELAY_TRIGGER_PIN, OUTPUT);
-    pinMode(O_THERMOSTAT_PLUG_TRIGGER_PIN, OUTPUT);
+    pinMode(O_THERMOSTAT_RELAY_TRIGGER_PIN, OUTPUT);
 
     readPersistentParams();
     mqtt_enabled = mqtt_servername_param && *mqtt_servername_param;
