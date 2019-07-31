@@ -71,6 +71,7 @@ WiFiClient esp_client;
 PubSubClient mqtt_client(esp_client);
 long last_mqtt_publish_time = 0L;
 
+//For SETUP_SSID AP
 DNSServer dnsServer;
 static const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 4, 1);
@@ -163,7 +164,7 @@ void printDebug(const char* msg)
   }
 }
 
-ICACHE_RAM_ATTR void windspeedInterruptHandler() {
+void ICACHE_RAM_ATTR windspeedInterruptHandler() {
   if (0 == windspeed_count) {
     windspeed_start_time = millis();
   }
@@ -538,8 +539,8 @@ void reconnectMQTT() {
     else
     {
       printDebug("MQTT waiting for reconnect");
-      // Wait 5 seconds before retrying
-      delay(5000);
+      // Wait 3 seconds before retrying
+      delay(3000);
     }
   }
 }
@@ -571,7 +572,7 @@ void setup()
     printDebug("Mode:Normal");
 
     dht.setup(I_DHT_PIN, DHTesp::AM2302);
-    sht.begin();
+    sht.begin(/*I_SHT_DATA_PIN, O_SHT_SYNC_PIN*/);
 
     pinMode(O_FAN_RELAY_TRIGGER_PIN, OUTPUT);
     pinMode(O_THERMOSTAT_RELAY_TRIGGER_PIN, OUTPUT);
