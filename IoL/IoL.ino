@@ -47,14 +47,16 @@ static const float WINDSPEED_TRAVEL_DISTANCE = 0.2262; //meter pr rotation
 #define DHT_MODEL (DHTesp::AM2302)
 
 
-enum DEBUG_MODE {
+enum DEBUG_MODE
+{
   DEBUG_NONE,
   DEBUG_SERIAL,
   DEBUG_MQTT
 } debug_mode = DEBUG_SERIAL;
 #define MQTT_DEBUG_TOPIC "debug"
 
-enum State {
+enum State
+{
   SETUP_MODE,
   READ_DHT_SENSOR,
   READ_SHT_SENSOR,
@@ -164,20 +166,25 @@ void printDebug(const char* msg)
   }
 }
 
-void ICACHE_RAM_ATTR windspeedInterruptHandler() {
-  if (0 == windspeed_count) {
+void ICACHE_RAM_ATTR windspeedInterruptHandler()
+{
+  if (0 == windspeed_count)
+  {
     windspeed_start_time = millis();
   }
   windspeed_count++;
 }
 
-float getWindspeed() { // m/s
-  if (0 == windspeed_count) {
+float getWindspeed() // m/s
+{
+  if (0 == windspeed_count)
+  {
     return 0.0f;
   }
 
   unsigned long current_time = millis();
-  if (current_time < windspeed_start_time) {
+  if (current_time < windspeed_start_time)
+  {
     return 0.0f;
   }
 
@@ -192,7 +199,8 @@ void onTick()
   {
     case READ_DHT_SENSOR:
       {
-        if (active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR) {
+        if (active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR)
+        {
           should_read_dht_temp_sensor = true;
         }
 
@@ -203,7 +211,8 @@ void onTick()
 
     case READ_SHT_SENSOR:
       {
-        if (active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR) {
+        if (active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR)
+        {
           should_read_sht_temp_sensor = true;
         }
         
@@ -214,7 +223,8 @@ void onTick()
     
     case READ_PRESSURE_DIFF_SENSOR:
       {
-        if (active_sensors_param & PRESSURE_DIFF_SENSOR) {
+        if (active_sensors_param & PRESSURE_DIFF_SENSOR)
+        {
           pressure_diff_value = max(0, min(1023, analogRead(I_PRESSURE_DIFF_PIN))) * 5.0f / 1023.0f -2.5f;
           printDebug((String("reading pressure diff value ")+String(pressure_diff_value, 2)).c_str());
         }
@@ -232,7 +242,8 @@ void readPersistentString(char* s, int max_length, int& adr)
 {
   int i = 0;
   byte c;
-  do {
+  do
+  {
     c = EEPROM.read(adr++);
     if (i<max_length)
     {
@@ -259,7 +270,9 @@ void readPersistentParams()
     mqtt_username_param[0] = 0;
     mqtt_password_param[0] = 0;
     active_sensors_param = 0;
-  } else {
+  }
+  else
+  {
     readPersistentString(ssid_param, MAX_SSID_LENGTH, adr);
     readPersistentString(password_param, MAX_PASSWORD_LENGTH, adr);
     readPersistentByte(active_sensors_param, adr);
@@ -298,23 +311,29 @@ void writePersistentParams(const char* ssid, const char* password, uint8_t activ
   EEPROM.commit();
 }
 
-void activateHeater(bool activate) {
-  if (active_sensors_param & THERMOSTAT_RELAY) {
+void activateHeater(bool activate)
+{
+  if (active_sensors_param & THERMOSTAT_RELAY)
+  {
     digitalWrite(O_THERMOSTAT_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
   }
 }
 
-void activateFan(bool activate) {
-  if (active_sensors_param & FAN_RELAY) {
+void activateFan(bool activate)
+{
+  if (active_sensors_param & FAN_RELAY)
+  {
     digitalWrite(O_FAN_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
   }
 }
 
-void handleNotFound() {
+void handleNotFound()
+{
   server.send(404, F("text/plain"), F("Page Not Found\n"));
 }
 
-void handleSetupRoot() {
+void handleSetupRoot()
+{
   if (server.hasArg("ssid") || server.hasArg("password")
       || server.hasArg("mqtt_server") || server.hasArg("mqtt_id") || server.hasArg("mqtt_username") || server.hasArg("mqtt_password")
       || server.hasArg("sensor0") || server.hasArg("sensor1") || server.hasArg("sensor2") || server.hasArg("sensor3")
@@ -442,7 +461,8 @@ void handleSetupRoot() {
   }
 }
 
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
+void mqttCallback(char* topic, byte* payload, unsigned int length)
+{
   int mqtt_sensorid_param_length = strlen(mqtt_sensorid_param);
   if (0 != strncmp(mqtt_sensorid_param, topic, mqtt_sensorid_param_length))
   {
@@ -530,17 +550,22 @@ void publishMQTTValues()
   }
 }
 
-bool connectMQTT() {
+bool connectMQTT()
+{
   byte i = 0;
-  while (i++<10 && mqtt_enabled && !mqtt_client.connected()) {
-    if (mqtt_client.connect(mqtt_sensorid_param, mqtt_username_param, mqtt_password_param)) {
+  while (i++<10 && mqtt_enabled && !mqtt_client.connected())
+  {
+    if (mqtt_client.connect(mqtt_sensorid_param, mqtt_username_param, mqtt_password_param))
+    {
       printDebug("MQTT connected");
 
-      if (active_sensors_param & THERMOSTAT_RELAY) {
+      if (active_sensors_param & THERMOSTAT_RELAY)
+      {
         mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Heater")).c_str());
       }
       
-      if (active_sensors_param & FAN_RELAY) {
+      if (active_sensors_param & FAN_RELAY)
+      {
         mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Fan")).c_str());
       }
       
@@ -597,7 +622,8 @@ void setup()
     printDebug("Connecting to WiFi");
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid_param, password_param);
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED)
+    {
       delay(500);
     }
     printDebug("WiFi connected");
@@ -621,17 +647,20 @@ void setup()
     state = READ_DHT_SENSOR;
     onTick();
 
-    if (active_sensors_param && WINDSPEED_SENSOR) {
+    if (active_sensors_param && WINDSPEED_SENSOR)
+    {
       windspeed_start_time = 0;
       windspeed_count = 0;
       attachInterrupt(digitalPinToInterrupt(I_WINDSPEED_PIN), windspeedInterruptHandler, RISING);
     }
 
     //Notify MQTT that relays have been turned off
-    if (active_sensors_param & THERMOSTAT_RELAY) {
+    if (active_sensors_param & THERMOSTAT_RELAY)
+    {
       publishMQTTValue("Heater", "off");
     }
-    if (active_sensors_param & FAN_RELAY) {
+    if (active_sensors_param & FAN_RELAY)
+    {
       publishMQTTValue("Fan", "off");
     }
   }
@@ -639,7 +668,8 @@ void setup()
 
 void loop()
 {
-  if (state == SETUP_MODE) {
+  if (state == SETUP_MODE)
+  {
     dnsServer.processNextRequest(); //Route everything to 192.168.4.1
     server.handleClient(); //WebServer
   }
@@ -650,34 +680,37 @@ void loop()
       mqtt_client.loop();
     
       long now = millis();
-      if ((now - last_mqtt_publish_time) > MQTT_PUBLISH_INTERVAL) {
+      if ((now - last_mqtt_publish_time) > MQTT_PUBLISH_INTERVAL)
+      {
         last_mqtt_publish_time = now;
         publishMQTTValues();
       }
     }
-  }
 
-  //DHT22
-  delay(max(1000, dht.getMinimumSamplingPeriod()));
-  if ((active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR) && should_read_dht_temp_sensor) {
-    TempAndHumidity temp_and_humidity = dht.getTempAndHumidity();
-    if (dht.getStatus() == DHTesp::ERROR_NONE)
+    //DHT22
+    delay(max(1000, dht.getMinimumSamplingPeriod()));
+    if ((active_sensors_param & DHT_TEMP_HUMIDITY_SENSOR) && should_read_dht_temp_sensor)
     {
-      should_read_dht_temp_sensor = false;
-      dht_tempsensor_value = temp_and_humidity.temperature;
-      dht_humiditysensor_value = temp_and_humidity.humidity;
-      printDebug((String("reading temp ")+String(dht_tempsensor_value, 1)+String(" and humidity ")+String(dht_humiditysensor_value, 1)).c_str());
+      TempAndHumidity temp_and_humidity = dht.getTempAndHumidity();
+      if (dht.getStatus() == DHTesp::ERROR_NONE)
+      {
+        should_read_dht_temp_sensor = false;
+        dht_tempsensor_value = temp_and_humidity.temperature;
+        dht_humiditysensor_value = temp_and_humidity.humidity;
+        printDebug((String("reading temp ")+String(dht_tempsensor_value, 1)+String(" and humidity ")+String(dht_humiditysensor_value, 1)).c_str());
+      }
+      else
+      {
+        printDebug((String("reading temp and humidity failed with error ")+String((int)dht.getStatus())).c_str());
+      }
     }
-    else
+  
+    //SHT2x
+    if ((active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR) && should_read_sht_temp_sensor)
     {
-      printDebug((String("reading temp and humidity failed with error ")+String((int)dht.getStatus())).c_str());
+      sht_tempsensor_value = sht.getTemperature();
+      sht_humiditysensor_value = sht.getHumidity();
+      should_read_sht_temp_sensor = false;
     }
-  }
-
-  //SHT2x
-  if ((active_sensors_param & SHT_TEMP_HUMIDITY_SENSOR) && should_read_sht_temp_sensor) {
-    sht_tempsensor_value = sht.getTemperature();
-    sht_humiditysensor_value = sht.getHumidity();
-    should_read_sht_temp_sensor = false;
   }
 }
