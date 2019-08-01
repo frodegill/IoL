@@ -111,9 +111,6 @@ volatile unsigned long windspeed_start_time;
 volatile unsigned int windspeed_count;
 float published_windspeed = -999.9f;
 
-volatile bool heater_active = false;
-volatile bool fan_active = false;
-
 volatile bool debug_enabled = false; // Internal, to keep track of Serial status
 
 //Forward define
@@ -301,25 +298,15 @@ void writePersistentParams(const char* ssid, const char* password, uint8_t activ
   EEPROM.commit();
 }
 
-void handleHeater(bool activate) {
+void activateHeater(bool activate) {
   if (active_sensors_param & THERMOSTAT_RELAY) {
     digitalWrite(O_THERMOSTAT_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
-    heater_active = activate;
-    if (mqtt_enabled)
-    {
-      publishMQTTValue("Heater", activate ? "on" : "off");
-    }
   }
 }
 
-void handleFan(bool activate) {
+void activateFan(bool activate) {
   if (active_sensors_param & FAN_RELAY) {
     digitalWrite(O_FAN_RELAY_TRIGGER_PIN, activate ? HIGH : LOW);
-    fan_active = activate;
-    if (mqtt_enabled)
-    {
-      publishMQTTValue("Fan", activate ? "on" : "off");
-    }
   }
 }
 
@@ -456,6 +443,23 @@ void handleSetupRoot() {
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  int mqtt_sensorid_param_length = strlen(mqtt_sensorid_param);
+  if (0 != strncmp(mqtt_sensorid_param, topic, mqtt_sensorid_param_length))
+  {
+    return;
+  }
+
+  printDebug((String("mqttCallback: ")+String(topic)+String(" value ")+String(reinterpret_cast<const char*>(payload))).c_str());
+  const char* key = topic + mqtt_sensorid_param_length;
+
+  if (0 == strcmp("Heater", key))
+  {
+    activateHeater(0 == strcmp("on", reinterpret_cast<const char*>(payload)));
+  }
+  else if (0 == strcmp("Fan", key))
+  {
+    activateFan(0 == strcmp("on", reinterpret_cast<const char*>(payload)));
+  }
 }
 
 void publishMQTTValue(const String& topic, const String& msg)
@@ -582,7 +586,10 @@ void setup()
     sht.begin(/*I_SHT_DATA_PIN, O_SHT_SYNC_PIN*/);
 
     pinMode(O_FAN_RELAY_TRIGGER_PIN, OUTPUT);
+    activateFan(false);
+
     pinMode(O_THERMOSTAT_RELAY_TRIGGER_PIN, OUTPUT);
+    activateHeater(false);
 
     readPersistentParams();
     mqtt_enabled = mqtt_servername_param && *mqtt_servername_param;
@@ -603,9 +610,6 @@ void setup()
       connectMQTT();
     }
 
-    handleHeater(false);
-    handleFan(false);
-
     should_read_dht_temp_sensor = false;
     dht_tempsensor_value = dht_humiditysensor_value = 0.0f;
 
@@ -621,6 +625,14 @@ void setup()
       windspeed_start_time = 0;
       windspeed_count = 0;
       attachInterrupt(digitalPinToInterrupt(I_WINDSPEED_PIN), windspeedInterruptHandler, RISING);
+    }
+
+    //Notify MQTT that relays have been turned off
+    if (active_sensors_param & THERMOSTAT_RELAY) {
+      publishMQTTValue("Heater", "off");
+    }
+    if (active_sensors_param & FAN_RELAY) {
+      publishMQTTValue("Fan", "off");
     }
   }
 }
