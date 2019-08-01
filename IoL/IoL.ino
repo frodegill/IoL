@@ -116,6 +116,9 @@ volatile bool fan_active = false;
 
 volatile bool debug_enabled = false; // Internal, to keep track of Serial status
 
+//Forward define
+bool connectMQTT();
+
 
 void enableDebug()
 {
@@ -152,7 +155,7 @@ void printDebug(const char* msg)
     }
     else if (debug_mode==DEBUG_MQTT && mqtt_enabled)
     {
-      if (mqtt_client.connected())
+      if (connectMQTT())
       {
         Serial.println((String("MQTT publish returned ") + String(mqtt_client.publish((String(mqtt_sensorid_param)+F(MQTT_DEBUG_TOPIC)).c_str(), msg)?"true":"false")).c_str());
       }
@@ -457,9 +460,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void publishMQTTValue(const String& topic, const String& msg)
 {
-  if (mqtt_enabled)
+  if (mqtt_enabled && connectMQTT())
   {
-    reconnectMQTT();
     bool ret = mqtt_client.publish((String(mqtt_sensorid_param)+topic).c_str(), msg.c_str(), true);
     printDebug((String("publishMQTTValue topic=")+String(mqtt_sensorid_param)+topic+String(" msg=")+msg+String(" returned ")+String(ret?"true":"false")).c_str());
   }
@@ -524,16 +526,20 @@ void publishMQTTValues()
   }
 }
 
-void reconnectMQTT() {
-  while (mqtt_enabled && !mqtt_client.connected()) {
+bool connectMQTT() {
+  byte i = 0;
+  while (i++<10 && mqtt_enabled && !mqtt_client.connected()) {
     if (mqtt_client.connect(mqtt_sensorid_param, mqtt_username_param, mqtt_password_param)) {
       printDebug("MQTT connected");
-      mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Heater")).c_str());
-      mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Fan")).c_str());
-      if (debug_mode==DEBUG_MQTT)
-      {
-        mqtt_client.subscribe((mqtt_sensorid_param+String(MQTT_DEBUG_TOPIC)).c_str());
+
+      if (active_sensors_param & THERMOSTAT_RELAY) {
+        mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Heater")).c_str());
       }
+      
+      if (active_sensors_param & FAN_RELAY) {
+        mqtt_client.subscribe((String(mqtt_sensorid_param)+F("Fan")).c_str());
+      }
+      
       printDebug("MQTT topics subscribed");
     }
     else
@@ -543,6 +549,7 @@ void reconnectMQTT() {
       delay(3000);
     }
   }
+  return mqtt_client.connected();
 }
 
 void setup()
@@ -593,7 +600,7 @@ void setup()
       printDebug("Enabling MQTT");
       mqtt_client.setServer(mqtt_servername_param, 1883);
       mqtt_client.setCallback(mqttCallback);
-      reconnectMQTT();
+      connectMQTT();
     }
 
     handleHeater(false);
@@ -626,11 +633,8 @@ void loop()
   }
   else
   {
-    if (mqtt_enabled)
+    if (mqtt_enabled && connectMQTT())
     {
-      if (!mqtt_client.connected()) {
-        reconnectMQTT();
-      }
       mqtt_client.loop();
     
       long now = millis();
