@@ -1,0 +1,818 @@
+[
+  {
+    "id": "e0f46158.4ce1",
+    "type": "tab",
+    "label": "Flow 1",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "6b749b38.c0b5e4",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Ute.temp",
+    "topic": "ute/DHT22T",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "2669ac00.7e53e4"
+      ]
+    ]
+  },
+  {
+    "id": "16b586ab.e92209",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "ute.temp",
+    "measurement": "ute.temp",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 780,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "70ec2a4e.bf35d4",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Ute.humid",
+    "topic": "ute/DHT22H",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 200,
+    "wires": [
+      [
+        "3fad1d82.53de42"
+      ]
+    ]
+  },
+  {
+    "id": "2ac88586.ba03ea",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "ute.humidity",
+    "measurement": "ute.humidity",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 790,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "2669ac00.7e53e4",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 120,
+    "wires": [
+      [
+        "bc337e8f.f8a24"
+      ]
+    ]
+  },
+  {
+    "id": "3fad1d82.53de42",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 200,
+    "wires": [
+      [
+        "83272fcb.104cc"
+      ]
+    ]
+  },
+  {
+    "id": "887ad064.cc128",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Inne.temp",
+    "topic": "inne/DHT22T",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 320,
+    "wires": [
+      [
+        "b0542346.1be26"
+      ]
+    ]
+  },
+  {
+    "id": "883c5cdb.398fd",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "inne.temp",
+    "measurement": "inne.temp",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 780,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "32834866.590668",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Inne.humid",
+    "topic": "inne/DHT22H",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 400,
+    "wires": [
+      [
+        "941e2609.624a98"
+      ]
+    ]
+  },
+  {
+    "id": "20317935.fc3036",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "inne.humidity",
+    "measurement": "inne.humidity",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 790,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "b0542346.1be26",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 320,
+    "wires": [
+      [
+        "a65e32c7.bc2e4"
+      ]
+    ]
+  },
+  {
+    "id": "941e2609.624a98",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 400,
+    "wires": [
+      [
+        "cd316cd7.59bad"
+      ]
+    ]
+  },
+  {
+    "id": "69d7c14.16a974",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Inne.wind",
+    "topic": "inne/Wind",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 480,
+    "wires": [
+      [
+        "218143eb.29578c"
+      ]
+    ]
+  },
+  {
+    "id": "a0bb4810.eb3d78",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "inne.wind",
+    "measurement": "inne.wind",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 780,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "27419f03.a8aed",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Inne.pressurediff",
+    "topic": "inne/Pressure",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 160,
+    "y": 560,
+    "wires": [
+      [
+        "cd2db43e.c55a48"
+      ]
+    ]
+  },
+  {
+    "id": "f3e5dae8.4ab638",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "inne.pressurediff",
+    "measurement": "inne.pressurediff",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 800,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "218143eb.29578c",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 480,
+    "wires": [
+      [
+        "a0bb4810.eb3d78"
+      ]
+    ]
+  },
+  {
+    "id": "cd2db43e.c55a48",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 560,
+    "wires": [
+      [
+        "f3e5dae8.4ab638"
+      ]
+    ]
+  },
+  {
+    "id": "ccd217db.51a638",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Korn.temp",
+    "topic": "korn/SHT2XT",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 680,
+    "wires": [
+      [
+        "c2ee1b64.95b1d8"
+      ]
+    ]
+  },
+  {
+    "id": "c2ee1b64.95b1d8",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 680,
+    "wires": [
+      [
+        "608d249.0b3a2dc"
+      ]
+    ]
+  },
+  {
+    "id": "a89e9acc.7944a8",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "korn.temp",
+    "measurement": "korn.temp",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 780,
+    "y": 680,
+    "wires": []
+  },
+  {
+    "id": "f66609a6.fb6848",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Korn.humidity",
+    "topic": "korn/SHT2XH",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 150,
+    "y": 760,
+    "wires": [
+      [
+        "3ea2daff.1b6c96"
+      ]
+    ]
+  },
+  {
+    "id": "3ea2daff.1b6c96",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "ToNumber",
+    "func": "msg.payload = Number(msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 760,
+    "wires": [
+      [
+        "66a45128.e92d6"
+      ]
+    ]
+  },
+  {
+    "id": "1cd2c1a9.101a6e",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "korn.humidity",
+    "measurement": "korn.humidity",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 790,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "id": "bc337e8f.f8a24",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store ute.temp",
+    "func": "flow.set('ute.temp', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 580,
+    "y": 80,
+    "wires": [
+      [
+        "eeb781a0.a28dc",
+        "16b586ab.e92209"
+      ]
+    ]
+  },
+  {
+    "id": "83272fcb.104cc",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store ute.humid",
+    "func": "flow.set('ute.humid', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 580,
+    "y": 200,
+    "wires": [
+      [
+        "eeb781a0.a28dc",
+        "2ac88586.ba03ea"
+      ]
+    ]
+  },
+  {
+    "id": "a65e32c7.bc2e4",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store inne.temp",
+    "func": "flow.set('inne.temp', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 580,
+    "y": 320,
+    "wires": [
+      [
+        "eeb781a0.a28dc",
+        "883c5cdb.398fd"
+      ]
+    ]
+  },
+  {
+    "id": "608d249.0b3a2dc",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store korn.temp",
+    "func": "flow.set('korn.temp', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 580,
+    "y": 680,
+    "wires": [
+      [
+        "eeb781a0.a28dc",
+        "a89e9acc.7944a8"
+      ]
+    ]
+  },
+  {
+    "id": "eeb781a0.a28dc",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Calculate uteinne.humid",
+    "func": "var utetemp=flow.get('ute.temp') || 0;\nvar utehumid=flow.get('ute.humid') || 0;\n\n//var innetemp=Math.min(flow.get('inne.temp') || 0, flow.get('korn.temp') || 0);\nvar innetemp=flow.get('inne.temp') || 0;\n\nvar constA = 17.625;\nvar constB = 243.04;\nvar dew = constB*(Math.log(utehumid/100.0)+((constA*utetemp)/(constB+utetemp))) / (constA-Math.log(utehumid/100.0)-((constA*utetemp)/(constB+utetemp)));\n\nvar uteinnehumid = 100.0*Math.exp((constA*dew)/(constB+dew)) / Math.exp((constA*innetemp)/(constB+innetemp));\n\nflow.set('uteinne.humid', uteinnehumid);\n\nmsg.payload = uteinnehumid; \nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 850,
+    "y": 120,
+    "wires": [
+      [
+        "edb25ac8.f3e568",
+        "9e48a37b.a7bea"
+      ]
+    ]
+  },
+  {
+    "id": "edb25ac8.f3e568",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "uteinne.humid",
+    "measurement": "uteinne.humid",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 1100,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "9e48a37b.a7bea",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Handle fan",
+    "func": "var uteinnehumid=flow.get('uteinne.humid');\nif (uteinnehumid===undefined) {\n    uteinnehumid = 100;\n}\n\n//var innehumid=Math.min(flow.get('inne.humid') || 0, flow.get('korn.humid') || 0);\nvar innehumid=flow.get('inne.humid') || 0;\n\nvar fan=flow.get('fan');\nif (fan===undefined) {\n    fan = 1;\n}\nvar manualfan=flow.get('manualfan') || 0;\n\nvar heater=flow.get('heater') || 0;\nvar manualheater=flow.get('manualheater') || 0;\n\nif (manualfan!=1 && fan==1 && uteinnehumid>(innehumid*0.99) && heater==0) {\n    msg.payload = 'off';\n    return msg;\n} else if (manualfan!=1 && fan==0 && (uteinnehumid<(innehumid*0.90) || heater==1)) {\n    msg.payload = 'on';\n    return msg;\n} else {\n    return null;\n}\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 1090,
+    "y": 80,
+    "wires": [
+      [
+        "4ac3c404.4bf74c"
+      ]
+    ]
+  },
+  {
+    "id": "1f4a6f3d.bfdc31",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "Fan",
+    "measurement": "Fan",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 770,
+    "y": 880,
+    "wires": []
+  },
+  {
+    "id": "cd316cd7.59bad",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store inne.humid",
+    "func": "flow.set('inne.humid', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 400,
+    "wires": [
+      [
+        "20317935.fc3036"
+      ]
+    ]
+  },
+  {
+    "id": "66a45128.e92d6",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store korn.humid",
+    "func": "flow.set('korn.humid', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 760,
+    "wires": [
+      [
+        "1cd2c1a9.101a6e"
+      ]
+    ]
+  },
+  {
+    "id": "4ac3c404.4bf74c",
+    "type": "mqtt out",
+    "z": "e0f46158.4ce1",
+    "name": "",
+    "topic": "Fan",
+    "qos": "0",
+    "retain": "true",
+    "broker": "61786ae7.fe9f34",
+    "x": 1270,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "7848d359.cf83ac",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Fan",
+    "topic": "Fan",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 130,
+    "y": 880,
+    "wires": [
+      [
+        "3fd82041.4b7fd"
+      ]
+    ]
+  },
+  {
+    "id": "3fd82041.4b7fd",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "StateToNumber",
+    "func": "msg.payload = (msg.payload=='on') ? 1 : 0;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 360,
+    "y": 880,
+    "wires": [
+      [
+        "ebeac3.33ef854"
+      ]
+    ]
+  },
+  {
+    "id": "ebeac3.33ef854",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store fan",
+    "func": "flow.set('fan', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 560,
+    "y": 880,
+    "wires": [
+      [
+        "1f4a6f3d.bfdc31"
+      ]
+    ]
+  },
+  {
+    "id": "a6792fcd.9c339",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "Heater",
+    "topic": "Heater",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 130,
+    "y": 1000,
+    "wires": [
+      [
+        "3cabf0de.c54a9"
+      ]
+    ]
+  },
+  {
+    "id": "3cabf0de.c54a9",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "StateToNumber",
+    "func": "msg.payload = (msg.payload=='on') ? 1 : 0;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 360,
+    "y": 1000,
+    "wires": [
+      [
+        "9affdc00.bf9d"
+      ]
+    ]
+  },
+  {
+    "id": "9affdc00.bf9d",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store heater",
+    "func": "flow.set('heater', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 570,
+    "y": 1000,
+    "wires": [
+      [
+        "f1ae83c2.6df25"
+      ]
+    ]
+  },
+  {
+    "id": "f1ae83c2.6df25",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "Heater",
+    "measurement": "Heater",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 770,
+    "y": 1000,
+    "wires": []
+  },
+  {
+    "id": "c81192cc.891c1",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "ManualFan",
+    "measurement": "ManualFan",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 790,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "id": "974fa57f.2021a8",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "ManualFan",
+    "topic": "ManualFan",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 140,
+    "y": 920,
+    "wires": [
+      [
+        "2f464ce1.016364"
+      ]
+    ]
+  },
+  {
+    "id": "2f464ce1.016364",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "StateToNumber",
+    "func": "msg.payload = (msg.payload=='on') ? 1 : 0;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 360,
+    "y": 920,
+    "wires": [
+      [
+        "b630341c.bcd2d8"
+      ]
+    ]
+  },
+  {
+    "id": "b630341c.bcd2d8",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store manual fan",
+    "func": "flow.set('manualfan', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 920,
+    "wires": [
+      [
+        "c81192cc.891c1"
+      ]
+    ]
+  },
+  {
+    "id": "a7488aeb.055118",
+    "type": "mqtt in",
+    "z": "e0f46158.4ce1",
+    "name": "ManualHeater",
+    "topic": "ManualHeater",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "61786ae7.fe9f34",
+    "x": 150,
+    "y": 1040,
+    "wires": [
+      [
+        "e1801770.790a18"
+      ]
+    ]
+  },
+  {
+    "id": "e1801770.790a18",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "StateToNumber",
+    "func": "msg.payload = (msg.payload=='on') ? 1 : 0;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 360,
+    "y": 1040,
+    "wires": [
+      [
+        "6ec08450.a1b49c"
+      ]
+    ]
+  },
+  {
+    "id": "6ec08450.a1b49c",
+    "type": "function",
+    "z": "e0f46158.4ce1",
+    "name": "Store manual heater",
+    "func": "flow.set('manualheater', msg.payload);\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 600,
+    "y": 1040,
+    "wires": [
+      [
+        "311a9d7d.837922"
+      ]
+    ]
+  },
+  {
+    "id": "311a9d7d.837922",
+    "type": "influxdb out",
+    "z": "e0f46158.4ce1",
+    "influxdb": "409342de.493e7c",
+    "name": "ManualHeater",
+    "measurement": "ManualHeater",
+    "precision": "",
+    "retentionPolicy": "",
+    "x": 800,
+    "y": 1040,
+    "wires": []
+  },
+  {
+    "id": "61786ae7.fe9f34",
+    "type": "mqtt-broker",
+    "z": "",
+    "name": "iol mqtt",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "usetls": false,
+    "compatmode": true,
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "409342de.493e7c",
+    "type": "influxdb",
+    "z": "",
+    "hostname": "127.0.0.1",
+    "port": "8086",
+    "protocol": "http",
+    "database": "iol",
+    "name": "iol influxDB",
+    "usetls": false,
+    "tls": ""
+  }
+]
